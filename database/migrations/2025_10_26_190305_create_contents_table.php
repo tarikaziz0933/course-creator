@@ -16,7 +16,6 @@ return new class extends Migration {
             $table->string('type')->default('text'); // text, image, video, link
             $table->string('title')->nullable();
             $table->text('body')->nullable();
-            $table->string('file_path')->nullable();
             $table->string('url')->nullable();
             $table->integer('order')->default(0);
             $table->timestamps();

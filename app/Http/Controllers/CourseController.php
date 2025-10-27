@@ -5,88 +5,118 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreCourseRequest;
 use App\Models\Course;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class CourseController extends Controller
 {
+    /**
+     * Show all courses with related modules and contents
+     */
     public function index()
     {
-        $courses = Course::with('modules.contents')->latest()->get();
+        $courses = Course::with('modules.contents')
+            ->latest()
+            ->get();
+
         return view('courses.index', compact('courses'));
     }
 
+    /**
+     * Show create form
+     */
     public function create()
     {
         return view('courses.create');
     }
 
+    /**
+     * Store a new course with modules & contents
+     */
     public function store(StoreCourseRequest $request)
     {
         $data = $request->validated();
 
         DB::beginTransaction();
+
         try {
-            $course = Course::create([
-                'title' => $data['title'],
-                'description' => $data['description'] ?? null,
-                'category' => $data['category'] ?? null,
-            ]);
+            $course = $this->createCourse($data);
 
-            // Feature video upload
-            if ($request->hasFile('feature_video')) {
-                $video = $request->file('feature_video');
-                $filename = Str::uuid() . '.' . $video->getClientOriginalExtension();
-                $path = $video->storeAs('feature_videos', $filename, 'public');
-                $course->update(['feature_video' => $path]);
-            }
-
-            // Save modules + contents
             if (!empty($data['modules'])) {
-                foreach ($data['modules'] as $mIndex => $mData) {
-                    if (empty($mData['title'])) {
-                        continue;
-                    }
-
-                    $module = $course->modules()->create([
-                        'title' => $mData['title'],
-                        'description' => $mData['description'] ?? null,
-                        'order' => $mIndex,
-                    ]);
-
-                    if (!empty($mData['contents'])) {
-                        foreach ($mData['contents'] as $cIndex => $cData) {
-                            $payload = [
-                                'type' => $cData['type'] ?? 'text',
-                                'title' => $cData['title'] ?? null,
-                                'body' => $cData['body'] ?? null,
-                                'order' => $cIndex,
-                            ];
-
-                            $fileInput = "modules.$mIndex.contents.$cIndex.file";
-                            if (in_array($cData['type'], ['image', 'video']) && $request->hasFile($fileInput)) {
-                                $file = $request->file($fileInput);
-                                $fname = Str::uuid() . '.' . $file->getClientOriginalExtension();
-                                $folder = $cData['type'] === 'image' ? 'content_images' : 'content_videos';
-                                $fpath = $file->storeAs($folder, $fname, 'public');
-                                $payload['file_path'] = $fpath;
-                            }
-
-                            if ($cData['type'] === 'link') {
-                                $payload['url'] = $cData['url'] ?? null;
-                            }
-
-                            $module->contents()->create($payload);
-                        }
-                    }
-                }
+                $this->storeModulesAndContents($course, $data['modules']);
             }
 
             DB::commit();
-            return redirect()->route('courses.index')->with('success', 'Course created successfully.');
-        } catch (\Exception $e) {
+
+            return redirect()
+                ->route('courses.index')
+                ->with('success', 'Course created successfully.');
+        } catch (\Throwable $e) {
             DB::rollBack();
-            \Log::error('Course store error: ' . $e->getMessage());
-            return back()->withErrors(['msg' => 'Something went wrong!']);
+            Log::error('Course store error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
+            return back()->withErrors(['msg' => 'Something went wrong! Please try again.']);
+        }
+    }
+
+    /**
+     * Create base course record
+     */
+    private function createCourse(array $data): Course
+    {
+        return Course::create([
+            'title' => $data['title'],
+            'description' => $data['description'] ?? null,
+            'category' => $data['category'] ?? null,
+        ]);
+    }
+
+    /**
+     * Store all modules and their contents for a course
+     */
+    private function storeModulesAndContents(Course $course, array $modules): void
+    {
+        foreach ($modules as $mIndex => $mData) {
+            if (empty($mData['title'])) {
+                continue;
+            }
+
+            $module = $course->modules()->create([
+                'title' => $mData['title'],
+                'description' => $mData['description'] ?? null,
+                'order' => $mIndex,
+            ]);
+
+            if (!empty($mData['contents'])) {
+                $this->storeContents($module, $mData['contents']);
+            }
+        }
+    }
+
+    /**
+     * Store multiple contents under a single module
+     */
+    private function storeContents($module, array $contents): void
+    {
+        $contentPayloads = [];
+
+        foreach ($contents as $cIndex => $cData) {
+            if (empty($cData['title'])) {
+                continue;
+            }
+
+            $payload = [
+                'type' => $cData['type'] ?? 'text',
+                'title' => $cData['title'],
+                'body' => $cData['body'] ?? null,
+                'url' => $cData['type'] === 'link' ? ($cData['url'] ?? null) : null,
+                'order' => $cIndex,
+            ];
+
+            $contentPayloads[] = $payload;
+        }
+
+        if (count($contentPayloads)) {
+            $module->contents()->createMany($contentPayloads);
         }
     }
 }

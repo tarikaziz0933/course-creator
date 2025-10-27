@@ -15,7 +15,6 @@ return new class extends Migration {
             $table->string('title');
             $table->text('description')->nullable();
             $table->string('category')->nullable();
-            $table->string('feature_video')->nullable(); // stored path
             $table->timestamps();
         });
     }

@@ -10,7 +10,10 @@
 </head>
 <body>
   <div class="container">
-    <h1>Create a Course</h1>
+    <div class="header-row">
+      <h1>Create a Course</h1>
+      <a href="{{ route('courses.index') }}" class="btn btn-secondary">← Back to Course List</a>
+    </div>
 
     @if ($errors->any())
       <div class="alert-error">
@@ -40,11 +43,6 @@
         <div class="flex-1">
           <label>Category</label>
           <input type="text" name="category" placeholder="Enter category">
-        </div>
-        <div class="flex-1">
-          <label>Feature Video (mp4/webm)</label>
-          <input type="file" name="feature_video" accept="video/*">
-          <div class="small">Tip: keep small sample file for testing.</div>
         </div>
       </div>
 
@@ -122,8 +120,8 @@
           <label>Content Type</label>
           <select name="modules[__MODULE_INDEX__][contents][__CONTENT_INDEX__][type]" class="content-type">
             <option value="text">Text</option>
-            <option value="image">Image</option>
-            <option value="video">Video (file)</option>
+            {{-- <option value="image">Image</option> --}}
+            {{-- <option value="video">Video (file)</option> --}}
             <option value="link">External Link</option>
           </select>
         </div>
@@ -133,10 +131,6 @@
           <textarea name="modules[__MODULE_INDEX__][contents][__CONTENT_INDEX__][body]" rows="2"></textarea>
         </div>
 
-        <div class="field field-file" style="display:none">
-          <label>Upload File (image/video)</label>
-          <input type="file" name="modules[__MODULE_INDEX__][contents][__CONTENT_INDEX__][file]">
-        </div>
 
         <div class="field field-url" style="display:none">
           <label>URL</label>

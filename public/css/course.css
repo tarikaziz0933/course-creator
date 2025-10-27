@@ -63,6 +63,26 @@ select:focus {
     box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
+.header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.btn-secondary {
+    background: #777;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 6px;
+    text-decoration: none;
+}
+
+.btn-secondary:hover {
+    background: #555;
+}
+
+
 /* Buttons */
 .btn {
     display: inline-block;
